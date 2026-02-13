@@ -3,6 +3,8 @@ package com.sourabh.selfcheckout.Controller;
 
 
 import com.sourabh.selfcheckout.Dto.CartResponse;
+import com.sourabh.selfcheckout.Dto.CheckoutResponse;
+import com.sourabh.selfcheckout.Dto.RemoveProductRequest;
 import com.sourabh.selfcheckout.Dto.ScanRequest;
 import com.sourabh.selfcheckout.Entity.Cart;
 import com.sourabh.selfcheckout.Service.CartService;
@@ -35,6 +37,19 @@ public class CartController {
         return cartService.getActiveCart(userId);
     }
 
+    @PostMapping("/{userId}/checkout")
+    public CheckoutResponse checkout(@PathVariable String userId) {
+        return cartService.checkout(userId);
+    }
+
+    @DeleteMapping("/remove")
+    public Cart removeProduct(@Valid @RequestBody RemoveProductRequest request) {
+        return cartService.removeProduct(
+                request.getBarcode(),
+                request.getUserId(),
+                request.getQuantity()
+        );
+    }
 
 }
 

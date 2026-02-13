@@ -16,6 +16,4 @@ VALUES
 INSERT INTO cart (user_id, status)
 VALUES ('user1', 'ACTIVE');
 
--- =========================
--- Insert cart items
--- =========================
+
