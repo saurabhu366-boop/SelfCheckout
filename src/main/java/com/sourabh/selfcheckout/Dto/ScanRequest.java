@@ -12,7 +12,7 @@ public class ScanRequest {
     private String userId;
 
     @Min(1)
-    private int quantity;
+    private Integer quantity = 1;
 
     public String getBarcode() {
         return barcode;
@@ -22,8 +22,9 @@ public class ScanRequest {
         return userId;
     }
 
+    /** Quantity to add; defaults to 1 if not sent (e.g. single scan). */
     public int getQuantity() {
-        return quantity;
+        return quantity == null ? 1 : quantity;
     }
 
     public void setBarcode(String barcode) {
@@ -34,7 +35,7 @@ public class ScanRequest {
         this.userId = userId;
     }
 
-    public void setQuantity(int quantity) {
+    public void setQuantity(Integer quantity) {
         this.quantity = quantity;
     }
 }

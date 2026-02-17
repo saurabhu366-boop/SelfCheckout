@@ -32,9 +32,9 @@ public class CartService {
     }
 
     // ---------------- ADD PRODUCT WITH QUANTITY ----------------
-    public Cart scanProduct(String barcode, String userId, int quantity) {
-
-        Product product = productRepo.findByBarcode(barcode)
+    public CartResponse scanProduct(String barcode, String userId, int quantity) {
+        String trimmedBarcode = barcode != null ? barcode.trim() : "";
+        Product product = productRepo.findByBarcode(trimmedBarcode)
                 .orElseThrow(() -> new ProductNotFoundException("Product not found"));
 
         if (product.getStockQuantity() < quantity) {
@@ -66,28 +66,38 @@ public class CartService {
         // Reduce stock
         product.setStockQuantity(product.getStockQuantity() - quantity);
 
-        return cartRepo.save(cart);
+        Cart saved = cartRepo.save(cart);
+        return toCartResponse(saved);
     }
 
-    // ---------------- GET ACTIVE CART ----------------
-    public CartResponse getActiveCart(String userId) {
-
-        Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
-                .orElseThrow(() -> new RuntimeException("Active cart not found"));
-
+    private CartResponse toCartResponse(Cart cart) {
         List<CartItemResponse> itemResponses = cart.getItems().stream()
                 .map(item -> new CartItemResponse(
-                        item.getProduct().getName(),
-                        item.getProduct().getPrice() * item.getQuantity(),
+                        item.getProduct().getBarcode(),
+                        nullToEmpty(item.getProduct().getName()),
+                        item.getProduct().getPrice(),
                         item.getQuantity()
                 ))
                 .toList();
 
-        double totalAmount = itemResponses.stream()
-                .mapToDouble(CartItemResponse::getPrice)
+        double totalAmount = cart.getItems().stream()
+                .mapToDouble(item ->
+                        item.getProduct().getPrice() * item.getQuantity())
                 .sum();
 
         return new CartResponse(itemResponses, totalAmount);
+    }
+
+
+    private static String nullToEmpty(String s) {
+        return s != null ? s : "";
+    }
+
+    // ---------------- GET ACTIVE CART ----------------
+    public CartResponse getActiveCart(String userId) {
+        Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                .orElseThrow(() -> new RuntimeException("Active cart not found"));
+        return toCartResponse(cart);
     }
 
     // ---------------- CHECKOUT CART ----------------
@@ -102,15 +112,19 @@ public class CartService {
         // Calculate total amount
         List<CartItemResponse> itemResponses = cart.getItems().stream()
                 .map(item -> new CartItemResponse(
-                        item.getProduct().getName(),
-                        item.getProduct().getPrice() * item.getQuantity(),
+                        item.getProduct().getBarcode(),
+                        nullToEmpty(item.getProduct().getName()),
+                        item.getProduct().getPrice(),
                         item.getQuantity()
                 ))
+
                 .toList();
 
-        double totalAmount = itemResponses.stream()
-                .mapToDouble(CartItemResponse::getPrice)
+        double totalAmount = cart.getItems().stream()
+                .mapToDouble(item ->
+                        item.getProduct().getPrice() * item.getQuantity())
                 .sum();
+
 
         // Update cart status to CHECKED_OUT
         cart.setStatus(CartStatus.CHECKED_OUT);
@@ -118,7 +132,7 @@ public class CartService {
 
         return new CheckoutResponse(
                 cart.getId(),
-                cart.getUserId(),
+                nullToEmpty(cart.getUserId()),
                 itemResponses,
                 totalAmount,
                 CartStatus.CHECKED_OUT.name(),

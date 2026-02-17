@@ -23,13 +23,15 @@ public class CartController {
         this.cartService = cartService;
     }
 
+    /** Call this when user scans a product (e.g. with camera). Returns updated cart (items + total) so the frontend can update the cart UI. */
     @PostMapping("/scan")
-    public Cart scan(@Valid @RequestBody ScanRequest request) {
-        return cartService.scanProduct(
-                request.getBarcode(),
-                request.getUserId(),
-                request.getQuantity()
-        );
+    public CartResponse scan(@Valid @RequestBody ScanRequest request) {
+        String barcode = request.getBarcode() != null ? request.getBarcode().trim() : "";
+        String userId = request.getUserId() != null ? request.getUserId().trim() : "";
+        if (barcode.isEmpty() || userId.isEmpty()) {
+            throw new IllegalArgumentException("barcode and userId are required");
+        }
+        return cartService.scanProduct(barcode, userId, request.getQuantity());
     }
 
     @GetMapping("/{userId}")
@@ -42,14 +44,17 @@ public class CartController {
         return cartService.checkout(userId);
     }
 
-    @DeleteMapping("/remove")
+    @PostMapping("/remove")
     public Cart removeProduct(@Valid @RequestBody RemoveProductRequest request) {
         return cartService.removeProduct(
                 request.getBarcode(),
                 request.getUserId(),
                 request.getQuantity()
+
+
         );
     }
+
 
 }
 
