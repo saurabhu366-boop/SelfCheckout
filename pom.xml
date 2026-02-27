@@ -5,31 +5,21 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.4.2</version> <!-- CORRECTED: 4.0.2 doesn't exist -->
-        <relativePath/> <!-- lookup parent from repository -->
+        <version>3.4.2</version>
+        <relativePath/>
     </parent>
     <groupId>com.sourabh</groupId>
     <artifactId>SelfCheckout</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <name>SelfCheckout</name>
     <description>SelfCheckout</description>
-    <url/>
-    <licenses>
-        <license/>
-    </licenses>
-    <developers>
-        <developer/>
-    </developers>
-    <scm>
-        <connection/>
-        <developerConnection/>
-        <tag/>
-        <url/>
-    </scm>
+
     <properties>
         <java.version>21</java.version>
     </properties>
+
     <dependencies>
+
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-jpa</artifactId>
@@ -42,10 +32,15 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
+
+        <!-- ✅ FIX: H2 was declared TWICE (once as `test`, once as `runtime`).         -->
+        <!-- Maven uses the FIRST declaration → H2 was test-only → app crashed          -->
+        <!-- at runtime with "Cannot load driver class: org.h2.Driver".                 -->
+        <!-- Fixed: single declaration with runtime scope so H2 is available at startup.-->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>
-            <scope>test</scope>
+            <scope>runtime</scope>
         </dependency>
 
         <dependency>
@@ -83,11 +78,7 @@
             <version>0.12.3</version>
             <scope>runtime</scope>
         </dependency>
-        <dependency>
-            <groupId>com.h2database</groupId>
-            <artifactId>h2</artifactId>
-            <scope>runtime</scope>
-        </dependency>
+
     </dependencies>
 
     <build>

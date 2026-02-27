@@ -1,6 +1,8 @@
 package com.sourabh.selfcheckout.Dto;
 
-import jakarta.persistence.Entity;
+// ✅ FIX Bug 7: Removed stray `import jakarta.persistence.Entity` — this is a DTO,
+//    not a JPA entity. The import was unused and misleading.
+
 import lombok.AllArgsConstructor;
 import lombok.Data;
 
@@ -21,6 +23,3 @@ public class AddToCartRequest {
     public int getQuantity() { return quantity; }
     public void setQuantity(int quantity) { this.quantity = quantity; }
 }
-
-
-

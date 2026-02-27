@@ -15,7 +15,7 @@ import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
-public class AuthService{
+public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
@@ -36,11 +36,16 @@ public class AuthService{
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
+        user.setRole(User.Role.USER);
+
+        // ✅ FIX: Set active explicitly — never rely on field default initializer.
+        // Lombok renames isActive → active so field initializer may not map
+        // correctly through Hibernate's setter introspection.
+        user.setActive(true);
 
         userRepository.save(user);
 
         String token = jwtUtil.generateToken(user);
-
 
         return AuthResponse.builder()
                 .token(token)
@@ -56,6 +61,9 @@ public class AuthService{
     // ========================
     public AuthResponse login(LoginRequest request) {
 
+        // This throws BadCredentialsException if wrong password,
+        // or DisabledException if isEnabled() = false.
+        // Both are now handled correctly in GlobalExceptionHandler.
         authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
@@ -69,7 +77,6 @@ public class AuthService{
 
         String token = jwtUtil.generateToken(user);
 
-
         return AuthResponse.builder()
                 .token(token)
                 .email(user.getEmail())
@@ -78,7 +85,4 @@ public class AuthService{
                 .message("Login successful")
                 .build();
     }
-
-
-
 }

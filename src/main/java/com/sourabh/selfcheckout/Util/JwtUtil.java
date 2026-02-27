@@ -2,7 +2,7 @@ package com.sourabh.selfcheckout.Util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+// ✅ FIX Bug 8: Removed unused import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;

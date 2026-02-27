@@ -1,8 +1,7 @@
 package com.sourabh.selfcheckout.Entity;
+
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -11,11 +10,27 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 
+// ✅ FIX Bug 3: Replaced @Data with specific Lombok annotations.
+//    @Data on a JPA entity generates equals()/hashCode() using ALL fields.
+//    Since `id` is null before save, this breaks entity comparisons in Sets/Maps.
+//    @EqualsAndHashCode(of = "id") ensures only the DB primary key is used.
+//
+// ✅ FIX Bug 4: Renamed `isActive` → `active`.
+//    A Boolean field named `isActive` makes Lombok generate `isActive()` (stripping "is"),
+//    which conflicts with the JPA column name and causes JSON to serialize as "active"
+//    instead of "isActive", breaking deserialization on both ends.
+//
+// ✅ FIX Bug 5: Timestamps moved to @PrePersist / @PreUpdate lifecycle callbacks.
+//    LocalDateTime.now() in a field initializer is called once at class-load time,
+//    not at entity creation. Also, updatedAt was never actually updated on changes.
+
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(of = "id")
 public class User implements UserDetails {
 
     @Id
@@ -37,15 +52,30 @@ public class User implements UserDetails {
     @Enumerated(EnumType.STRING)
     private Role role = Role.USER;
 
+    // ✅ Bug 4 fix: renamed from isActive to active
     @Column(nullable = false)
-    private Boolean isActive = true;
+    private Boolean active = true;
 
+    // ✅ Bug 5 fix: no longer initialized here — set via @PrePersist
     @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
 
-    private LocalDateTime updatedAt = LocalDateTime.now();
+    private LocalDateTime updatedAt;
 
-    // UserDetails implementation
+    // ✅ Bug 5 fix: lifecycle callbacks set timestamps correctly at runtime
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
+
+    // ── UserDetails implementation ────────────────────────────────
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
@@ -73,7 +103,8 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return isActive;
+        // ✅ Bug 4 fix: now uses renamed field `active`
+        return active;
     }
 
     public enum Role {

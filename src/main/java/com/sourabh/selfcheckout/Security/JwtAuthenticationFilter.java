@@ -2,11 +2,11 @@ package com.sourabh.selfcheckout.Security;
 
 import jakarta.servlet.*;
 import jakarta.servlet.http.*;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.web.filter.OncePerRequestFilter;
 import com.sourabh.selfcheckout.Util.JwtUtil;
-
 
 import java.io.IOException;
 
@@ -35,23 +35,38 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         String token = authHeader.substring(7);
-        String email = jwtUtil.extractUsername(token);
+
+        // ✅ FIX Bug 1: Wrap token parsing in try-catch.
+        // A malformed, expired, or tampered token throws JwtException.
+        // Without this, the app returns 500 instead of 401.
+        String email;
+        try {
+            email = jwtUtil.extractUsername(token);
+        } catch (Exception e) {
+            // Token is invalid — continue chain without setting authentication.
+            // Spring Security will then return 401 automatically.
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (email != null &&
                 SecurityContextHolder.getContext().getAuthentication() == null) {
 
-            UserDetails userDetails =
-                    userDetailsService.loadUserByUsername(email);
+            UserDetails userDetails;
+            try {
+                userDetails = userDetailsService.loadUserByUsername(email);
+            } catch (UsernameNotFoundException e) {
+                filterChain.doFilter(request, response);
+                return;
+            }
 
             if (jwtUtil.validateToken(token, userDetails)) {
-                var authToken =
-                        new org.springframework.security.authentication.
-                                UsernamePasswordAuthenticationToken(
+                UsernamePasswordAuthenticationToken authToken =
+                        new UsernamePasswordAuthenticationToken(
                                 userDetails, null,
                                 userDetails.getAuthorities());
 
-                SecurityContextHolder.getContext()
-                        .setAuthentication(authToken);
+                SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         }
 
