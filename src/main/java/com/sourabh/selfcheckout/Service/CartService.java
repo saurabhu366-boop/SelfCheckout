@@ -15,6 +15,7 @@ import com.sourabh.selfcheckout.Repo.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 
 @Service
@@ -31,17 +32,19 @@ public class CartService {
         this.cartItemRepo = ci;
     }
 
-    // ---------------- ADD PRODUCT WITH QUANTITY ----------------
+    // ---------------- ADD PRODUCT (SCAN) ----------------
     public CartResponse scanProduct(String barcode, String userId, int quantity) {
         String trimmedBarcode = barcode != null ? barcode.trim() : "";
+
         Product product = productRepo.findByBarcode(trimmedBarcode)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+                .orElseThrow(() -> new ProductNotFoundException(
+                        "Product not found for barcode: " + trimmedBarcode));
 
         if (product.getStockQuantity() < quantity) {
-            throw new OutOfStockException("Not enough stock");
+            throw new OutOfStockException("Not enough stock for: " + product.getName());
         }
 
-        // Get active cart or create new
+        // ✅ Auto-create cart if none exists — no pre-inserted SQL row needed
         Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseGet(() -> {
                     Cart newCart = new Cart();
@@ -50,7 +53,7 @@ public class CartService {
                     return cartRepo.save(newCart);
                 });
 
-        // Check if product already exists in cart
+        // Add or increment existing item
         CartItem item = cart.getItems().stream()
                 .filter(ci -> ci.getProduct().getId().equals(product.getId()))
                 .findFirst()
@@ -63,53 +66,33 @@ public class CartService {
             item.setQuantity(item.getQuantity() + quantity);
         }
 
-        // Reduce stock
         product.setStockQuantity(product.getStockQuantity() - quantity);
 
         Cart saved = cartRepo.save(cart);
         return toCartResponse(saved);
     }
 
-    private CartResponse toCartResponse(Cart cart) {
-        List<CartItemResponse> itemResponses = cart.getItems().stream()
-                .map(item -> new CartItemResponse(
-                        item.getProduct().getBarcode(),
-                        nullToEmpty(item.getProduct().getName()),
-                        item.getProduct().getPrice(),
-                        item.getQuantity()
-                ))
-                .toList();
-
-        double totalAmount = cart.getItems().stream()
-                .mapToDouble(item ->
-                        item.getProduct().getPrice() * item.getQuantity())
-                .sum();
-
-        return new CartResponse(itemResponses, totalAmount);
-    }
-
-
-    private static String nullToEmpty(String s) {
-        return s != null ? s : "";
-    }
-
     // ---------------- GET ACTIVE CART ----------------
+    // ✅ FIX: Return empty cart instead of throwing 500 when user has no cart yet.
+    // This happens on first login — the user hasn't scanned anything so no cart
+    // row exists. The old code threw RuntimeException("Active cart not found")
+    // which crashed the Flutter cart screen on first open.
     public CartResponse getActiveCart(String userId) {
-        Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
-                .orElseThrow(() -> new RuntimeException("Active cart not found"));
-        return toCartResponse(cart);
+        return cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
+                .map(this::toCartResponse)
+                .orElse(emptyCartResponse());
     }
 
-    // ---------------- CHECKOUT CART ----------------
+    // ---------------- CHECKOUT ----------------
     public CheckoutResponse checkout(String userId) {
+        // ✅ FIX: Return clear error message instead of generic 500
         Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
-                .orElseThrow(() -> new RuntimeException("Active cart not found"));
+                .orElseThrow(() -> new RuntimeException("No active cart found. Scan some items first."));
 
         if (cart.getItems() == null || cart.getItems().isEmpty()) {
-            throw new RuntimeException("Cannot checkout empty cart");
+            throw new RuntimeException("Cannot checkout an empty cart.");
         }
 
-        // Calculate total amount
         List<CartItemResponse> itemResponses = cart.getItems().stream()
                 .map(item -> new CartItemResponse(
                         item.getProduct().getBarcode(),
@@ -117,16 +100,12 @@ public class CartService {
                         item.getProduct().getPrice(),
                         item.getQuantity()
                 ))
-
                 .toList();
 
         double totalAmount = cart.getItems().stream()
-                .mapToDouble(item ->
-                        item.getProduct().getPrice() * item.getQuantity())
+                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
                 .sum();
 
-
-        // Update cart status to CHECKED_OUT
         cart.setStatus(CartStatus.CHECKED_OUT);
         cartRepo.save(cart);
 
@@ -140,36 +119,62 @@ public class CartService {
         );
     }
 
-    // ---------------- REMOVE PRODUCT FROM CART ----------------
+    // ---------------- REMOVE PRODUCT ----------------
     public Cart removeProduct(String barcode, String userId, int quantity) {
         Product product = productRepo.findByBarcode(barcode)
-                .orElseThrow(() -> new ProductNotFoundException("Product not found"));
+                .orElseThrow(() -> new ProductNotFoundException("Product not found: " + barcode));
 
+        // ✅ FIX: Return clear error message instead of generic 500
         Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
-                .orElseThrow(() -> new RuntimeException("Active cart not found"));
+                .orElseThrow(() -> new RuntimeException("No active cart found for user."));
 
         CartItem item = cart.getItems().stream()
                 .filter(ci -> ci.getProduct().getId().equals(product.getId()))
                 .findFirst()
-                .orElseThrow(() -> new RuntimeException("Product not found in cart"));
+                .orElseThrow(() -> new RuntimeException("Product not in cart: " + product.getName()));
 
         if (item.getQuantity() < quantity) {
-            throw new RuntimeException("Cannot remove more items than in cart");
+            throw new RuntimeException("Cannot remove " + quantity + " items — only "
+                    + item.getQuantity() + " in cart.");
         }
 
-        // Restore stock
         product.setStockQuantity(product.getStockQuantity() + quantity);
 
-        // Update or remove cart item
         if (item.getQuantity() == quantity) {
-            // Remove item entirely
             cart.getItems().remove(item);
             cartItemRepo.delete(item);
         } else {
-            // Reduce quantity
             item.setQuantity(item.getQuantity() - quantity);
         }
 
         return cartRepo.save(cart);
+    }
+
+    // ---------------- HELPERS ----------------
+
+    private CartResponse toCartResponse(Cart cart) {
+        List<CartItemResponse> itemResponses = cart.getItems().stream()
+                .map(item -> new CartItemResponse(
+                        item.getProduct().getBarcode(),
+                        nullToEmpty(item.getProduct().getName()),
+                        item.getProduct().getPrice(),
+                        item.getQuantity()
+                ))
+                .toList();
+
+        double totalAmount = cart.getItems().stream()
+                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
+                .sum();
+
+        return new CartResponse(itemResponses, totalAmount);
+    }
+
+    // ✅ Returns a valid empty CartResponse — used when user has no cart yet
+    private CartResponse emptyCartResponse() {
+        return new CartResponse(Collections.emptyList(), 0.0);
+    }
+
+    private static String nullToEmpty(String s) {
+        return s != null ? s : "";
     }
 }
