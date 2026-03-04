@@ -1,17 +1,15 @@
 package com.sourabh.selfcheckout.Controller;
 
-
-
 import com.sourabh.selfcheckout.Dto.CartResponse;
 import com.sourabh.selfcheckout.Dto.CheckoutResponse;
 import com.sourabh.selfcheckout.Dto.RemoveProductRequest;
 import com.sourabh.selfcheckout.Dto.ScanRequest;
 import com.sourabh.selfcheckout.Entity.Cart;
 import com.sourabh.selfcheckout.Service.CartService;
-import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
-
-
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -23,38 +21,40 @@ public class CartController {
         this.cartService = cartService;
     }
 
-    /** Call this when user scans a product (e.g. with camera). Returns updated cart (items + total) so the frontend can update the cart UI. */
     @PostMapping("/scan")
-    public CartResponse scan(@Valid @RequestBody ScanRequest request) {
-        String barcode = request.getBarcode() != null ? request.getBarcode().trim() : "";
-        String userId = request.getUserId() != null ? request.getUserId().trim() : "";
-        if (barcode.isEmpty() || userId.isEmpty()) {
-            throw new IllegalArgumentException("barcode and userId are required");
+    public CartResponse scan(
+            @Valid @RequestBody ScanRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
+
+        String userId = userDetails.getUsername(); // ✅ from JWT, not request body
+        String barcode = request.getBarcode().trim();
+
+        if (barcode.isEmpty()) {
+            throw new IllegalArgumentException("barcode is required");
         }
         return cartService.scanProduct(barcode, userId, request.getQuantity());
     }
 
-    @GetMapping("/{userId}")
-    public CartResponse getActiveCart(@PathVariable String userId) {
-        return cartService.getActiveCart(userId);
+    @GetMapping                                    // ✅ was /{userId} — caused 404 with emails
+    public CartResponse getActiveCart(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return cartService.getActiveCart(userDetails.getUsername());
     }
 
-    @PostMapping("/{userId}/checkout")
-    public CheckoutResponse checkout(@PathVariable String userId) {
-        return cartService.checkout(userId);
+    @PostMapping("/checkout")                      // ✅ was /{userId}/checkout
+    public CheckoutResponse checkout(
+            @AuthenticationPrincipal UserDetails userDetails) {
+        return cartService.checkout(userDetails.getUsername());
     }
 
     @PostMapping("/remove")
-    public Cart removeProduct(@Valid @RequestBody RemoveProductRequest request) {
+    public Cart removeProduct(
+            @Valid @RequestBody RemoveProductRequest request,
+            @AuthenticationPrincipal UserDetails userDetails) {
         return cartService.removeProduct(
                 request.getBarcode(),
-                request.getUserId(),
+                userDetails.getUsername(), // ✅ from JWT, not request body
                 request.getQuantity()
-
-
         );
     }
-
-
 }
-

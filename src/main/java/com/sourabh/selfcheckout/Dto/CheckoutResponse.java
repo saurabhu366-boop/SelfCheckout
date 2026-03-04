@@ -8,7 +8,6 @@ import java.util.List;
 @AllArgsConstructor
 public class CheckoutResponse {
     private Long cartId;
-    private String userId;
     private List<CartItemResponse> items;
     private double totalAmount;
     private String status;

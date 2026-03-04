@@ -8,34 +8,16 @@ public class ScanRequest {
     @NotBlank
     private String barcode;
 
-    @NotBlank
-    private String userId;
+    // ✅ REMOVED: userId — now comes from JWT via @AuthenticationPrincipal
 
     @Min(1)
     private Integer quantity = 1;
 
-    public String getBarcode() {
-        return barcode;
-    }
+    public String getBarcode() { return barcode; }
 
-    public String getUserId() {
-        return userId;
-    }
+    public int getQuantity() { return quantity == null ? 1 : quantity; }
 
-    /** Quantity to add; defaults to 1 if not sent (e.g. single scan). */
-    public int getQuantity() {
-        return quantity == null ? 1 : quantity;
-    }
+    public void setBarcode(String barcode) { this.barcode = barcode; }
 
-    public void setBarcode(String barcode) {
-        this.barcode = barcode;
-    }
-
-    public void setUserId(String userId) {
-        this.userId = userId;
-    }
-
-    public void setQuantity(Integer quantity) {
-        this.quantity = quantity;
-    }
+    public void setQuantity(Integer quantity) { this.quantity = quantity; }
 }

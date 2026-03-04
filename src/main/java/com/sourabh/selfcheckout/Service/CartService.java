@@ -85,7 +85,6 @@ public class CartService {
 
     // ---------------- CHECKOUT ----------------
     public CheckoutResponse checkout(String userId) {
-        // ✅ FIX: Return clear error message instead of generic 500
         Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new RuntimeException("No active cart found. Scan some items first."));
 
@@ -111,7 +110,7 @@ public class CartService {
 
         return new CheckoutResponse(
                 cart.getId(),
-                nullToEmpty(cart.getUserId()),
+                // ✅ REMOVED: nullToEmpty(cart.getUserId()) — not needed with JWT
                 itemResponses,
                 totalAmount,
                 CartStatus.CHECKED_OUT.name(),
