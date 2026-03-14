@@ -2,8 +2,8 @@ package com.sourabh.selfcheckout.Util;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
-// ✅ FIX Bug 8: Removed unused import io.jsonwebtoken.SignatureAlgorithm
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
@@ -23,8 +23,16 @@ public class JwtUtil {
     @Value("${jwt.expiration:86400000}") // 24 hours in milliseconds
     private Long jwtExpiration;
 
+    // Cached once at startup — the secret never changes at runtime
+    private SecretKey signingKey;
+
+    @PostConstruct
+    public void init() {
+        signingKey = Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+    }
+
     private SecretKey getSigningKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return signingKey;
     }
 
     public String extractUsername(String token) {

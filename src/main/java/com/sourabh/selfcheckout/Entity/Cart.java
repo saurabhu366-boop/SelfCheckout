@@ -14,6 +14,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "cart", indexes = {
+        @Index(name = "idx_cart_user_status", columnList = "userId, status")
+})
 @Getter
 @Setter
 @NoArgsConstructor

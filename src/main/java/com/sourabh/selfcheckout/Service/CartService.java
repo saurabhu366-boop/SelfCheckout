@@ -15,6 +15,7 @@ import com.sourabh.selfcheckout.Repo.ProductRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -53,7 +54,8 @@ public class CartService {
                     return cartRepo.save(newCart);
                 });
 
-        // Add or increment existing item
+        // Add or increment existing item — cart.getItems() is already fully loaded
+        // by the JOIN FETCH in CartRepository, so this is an in-memory lookup.
         CartItem item = cart.getItems().stream()
                 .filter(ci -> ci.getProduct().getId().equals(product.getId()))
                 .findFirst()
@@ -92,18 +94,19 @@ public class CartService {
             throw new RuntimeException("Cannot checkout an empty cart.");
         }
 
-        List<CartItemResponse> itemResponses = cart.getItems().stream()
-                .map(item -> new CartItemResponse(
-                        item.getProduct().getBarcode(),
-                        nullToEmpty(item.getProduct().getName()),
-                        item.getProduct().getPrice(),
-                        item.getQuantity()
-                ))
-                .toList();
-
-        double totalAmount = cart.getItems().stream()
-                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
-                .sum();
+        // Single pass: build item list and accumulate total simultaneously
+        double totalAmount = 0.0;
+        List<CartItemResponse> itemResponses = new ArrayList<>(cart.getItems().size());
+        for (CartItem item : cart.getItems()) {
+            Product p = item.getProduct();
+            itemResponses.add(new CartItemResponse(
+                    p.getBarcode(),
+                    nullToEmpty(p.getName()),
+                    p.getPrice(),
+                    item.getQuantity()
+            ));
+            totalAmount += p.getPrice() * item.getQuantity();
+        }
 
         cart.setStatus(CartStatus.CHECKED_OUT);
         cartRepo.save(cart);
@@ -127,6 +130,7 @@ public class CartService {
         Cart cart = cartRepo.findByUserIdAndStatus(userId, CartStatus.ACTIVE)
                 .orElseThrow(() -> new RuntimeException("No active cart found for user."));
 
+        // cart.getItems() is fully loaded via JOIN FETCH — in-memory lookup
         CartItem item = cart.getItems().stream()
                 .filter(ci -> ci.getProduct().getId().equals(product.getId()))
                 .findFirst()
@@ -151,20 +155,20 @@ public class CartService {
 
     // ---------------- HELPERS ----------------
 
+    // Single pass: build the item response list and compute the total together
     private CartResponse toCartResponse(Cart cart) {
-        List<CartItemResponse> itemResponses = cart.getItems().stream()
-                .map(item -> new CartItemResponse(
-                        item.getProduct().getBarcode(),
-                        nullToEmpty(item.getProduct().getName()),
-                        item.getProduct().getPrice(),
-                        item.getQuantity()
-                ))
-                .toList();
-
-        double totalAmount = cart.getItems().stream()
-                .mapToDouble(item -> item.getProduct().getPrice() * item.getQuantity())
-                .sum();
-
+        double totalAmount = 0.0;
+        List<CartItemResponse> itemResponses = new ArrayList<>(cart.getItems().size());
+        for (CartItem item : cart.getItems()) {
+            Product p = item.getProduct();
+            itemResponses.add(new CartItemResponse(
+                    p.getBarcode(),
+                    nullToEmpty(p.getName()),
+                    p.getPrice(),
+                    item.getQuantity()
+            ));
+            totalAmount += p.getPrice() * item.getQuantity();
+        }
         return new CartResponse(itemResponses, totalAmount);
     }
 
