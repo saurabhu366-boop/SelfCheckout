@@ -9,6 +9,7 @@ import com.sourabh.selfcheckout.Util.JwtUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -61,19 +62,17 @@ public class AuthService {
     // ========================
     public AuthResponse login(LoginRequest request) {
 
-        // This throws BadCredentialsException if wrong password,
-        // or DisabledException if isEnabled() = false.
-        // Both are now handled correctly in GlobalExceptionHandler.
-        authenticationManager.authenticate(
+        // authenticate() returns the fully-populated Authentication whose principal
+        // is the UserDetails loaded by CustomUserDetailsService — reuse it directly
+        // instead of issuing a second SELECT to find the same user again.
+        Authentication auth = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
                         request.getEmail(),
                         request.getPassword()
                 )
         );
 
-        User user = userRepository.findByEmail(request.getEmail())
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("User not found"));
+        User user = (User) auth.getPrincipal();
 
         String token = jwtUtil.generateToken(user);
 
