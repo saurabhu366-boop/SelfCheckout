@@ -1,5 +1,4 @@
 package com.sourabh.selfcheckout.Controller;
-
 import com.sourabh.selfcheckout.Dto.AuthResponse;
 import com.sourabh.selfcheckout.Dto.LoginRequest;
 import com.sourabh.selfcheckout.Dto.RegisterRequest;

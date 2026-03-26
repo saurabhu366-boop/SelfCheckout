@@ -1,7 +1,6 @@
 package com.sourabh.selfcheckout.Dto;
 
-// ✅ FIX Bug 7: Removed stray `import jakarta.persistence.Entity` — this is a DTO,
-//    not a JPA entity. The import was unused and misleading.
+
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

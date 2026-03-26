@@ -1,5 +1,4 @@
 package com.sourabh.selfcheckout.Config;
-
 import com.sourabh.selfcheckout.Security.JwtAuthenticationFilter;
 import com.sourabh.selfcheckout.Util.JwtUtil;
 import org.springframework.context.annotation.*;

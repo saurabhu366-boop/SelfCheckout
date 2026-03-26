@@ -37,10 +37,6 @@ public class AuthService {
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setRole(User.Role.USER);
-
-        // ✅ FIX: Set active explicitly — never rely on field default initializer.
-        // Lombok renames isActive → active so field initializer may not map
-        // correctly through Hibernate's setter introspection.
         user.setActive(true);
 
         userRepository.save(user);
