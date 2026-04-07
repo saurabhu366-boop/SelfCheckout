@@ -35,9 +35,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
         String token = authHeader.substring(7);
 
-        // ✅ FIX Bug 1: Wrap token parsing in try-catch.
-        // A malformed, expired, or tampered token throws JwtException.
-        // Without this, the app returns 500 instead of 401.
         String email;
         try {
             email = jwtUtil.extractUsername(token);
