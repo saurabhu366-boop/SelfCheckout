@@ -1,8 +1,8 @@
 MERGE INTO product (barcode, name, price, stock_quantity) KEY(barcode) VALUES
     ('8901234567890', 'Milk 500ml',          30,  10),
     ('8909876543210', 'Bread',               25,   5),
-    ('8901719134852', 'Parle-G',             10,  12),
-    ('8901262010016', 'Butter 100g',         50,   8),
+    ('8901719134852', 'Parle-G',             10,  50),
+    ('8901262010016', 'Butter 100g',         50,   50),
     ('8901058851298', 'Maggie 70g',          15,  25),
     ('8906060900052', 'Amul Cheese Slice',   55,   6),
     ('8901030869556', 'Tata Salt 1kg',       20,  15),
@@ -10,7 +10,7 @@ MERGE INTO product (barcode, name, price, stock_quantity) KEY(barcode) VALUES
     ('8901030804388', 'Tata Tea Gold 250g', 110,   9),
     ('8901396040184', 'Colgate 200g',        95,  11),
     ('8901499400016', 'Dettol Soap',         45,  14),
-    ('8902080000017', 'Lays Classic 26g',    20,  20),
+    ('8901491101837', 'Lays Classic 50g',    20,  50),
     ('8906063600027', 'Haldiram Bhujia',     30,  10),
     ('8901719110726', 'Hide & Seek 100g',    30,   8),
     ('8901826100018', 'Bisleri 1L',          20,  25);

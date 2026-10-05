@@ -4,7 +4,6 @@ import com.sourabh.selfcheckout.Dto.CartResponse;
 import com.sourabh.selfcheckout.Dto.CheckoutResponse;
 import com.sourabh.selfcheckout.Dto.RemoveProductRequest;
 import com.sourabh.selfcheckout.Dto.ScanRequest;
-import com.sourabh.selfcheckout.Entity.Cart;
 import com.sourabh.selfcheckout.Service.CartService;
 import jakarta.validation.Valid;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -35,20 +34,21 @@ public class CartController {
         return cartService.scanProduct(barcode, userId, request.getQuantity());
     }
 
-    @GetMapping                                    // ✅ was /{userId} — caused 404 with emails
+    @GetMapping({"", "/{userId}"})
     public CartResponse getActiveCart(
             @AuthenticationPrincipal UserDetails userDetails) {
         return cartService.getActiveCart(userDetails.getUsername());
     }
 
-    @PostMapping("/checkout")                      // ✅ was /{userId}/checkout
+    @PostMapping({"/checkout", "/{userId}/checkout"})
     public CheckoutResponse checkout(
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return cartService.checkout(userDetails.getUsername());
+            @AuthenticationPrincipal UserDetails userDetails,
+            @RequestParam(defaultValue = "UPI") String paymentMethod) {
+        return cartService.checkout(userDetails.getUsername(), paymentMethod);
     }
 
     @PostMapping("/remove")
-    public Cart removeProduct(
+    public CartResponse removeProduct(
             @Valid @RequestBody RemoveProductRequest request,
             @AuthenticationPrincipal UserDetails userDetails) {
         return cartService.removeProduct(

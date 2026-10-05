@@ -13,6 +13,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Entity
+@Table(name = "carts")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -21,20 +22,37 @@ public class Cart {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "cart_id")
     private Long id;
 
-    private String userId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(
+            name = "customer_id",
+            referencedColumnName = "customer_id",
+            nullable = false
+    )
+    private Customer customer;
 
     @Enumerated(EnumType.STRING)
+    @Column(name = "status")
     private CartStatus status;
 
     // ✅ ADD: auto-set when cart is first created
-    @Column(updatable = false)
+    @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
+
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 
     @OneToMany(mappedBy = "cart", cascade = CascadeType.ALL)

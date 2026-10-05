@@ -3,7 +3,9 @@ package com.sourabh.selfcheckout.Service;
 import com.sourabh.selfcheckout.Dto.AuthResponse;
 import com.sourabh.selfcheckout.Dto.LoginRequest;
 import com.sourabh.selfcheckout.Dto.RegisterRequest;
+import com.sourabh.selfcheckout.Entity.Customer;
 import com.sourabh.selfcheckout.Entity.User;
+import com.sourabh.selfcheckout.Repo.CustomerRepository;
 import com.sourabh.selfcheckout.Repo.UserRepository;
 import com.sourabh.selfcheckout.Util.JwtUtil;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +14,16 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.userdetails.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final CustomerRepository customerRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtUtil jwtUtil;
     private final AuthenticationManager authenticationManager;
@@ -25,6 +31,7 @@ public class AuthService {
     // ========================
     // REGISTER
     // ========================
+    @Transactional
     public AuthResponse register(RegisterRequest request) {
 
         if (userRepository.findByEmail(request.getEmail()).isPresent()) {
@@ -40,6 +47,15 @@ public class AuthService {
         user.setActive(true);
 
         userRepository.save(user);
+
+        customerRepository.findByEmail(user.getEmail()).orElseGet(() -> {
+            Customer customer = new Customer();
+            customer.setFullName(user.getFullName());
+            customer.setEmail(user.getEmail());
+            customer.setPhone(user.getPhoneNumber());
+            customer.setCreatedAt(LocalDateTime.now());
+            return customerRepository.save(customer);
+        });
 
         String token = jwtUtil.generateToken(user);
 

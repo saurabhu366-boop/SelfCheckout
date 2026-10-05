@@ -8,9 +8,9 @@ import java.util.List;
 @Data
 @AllArgsConstructor
 public class OrderHistoryResponse {
-    private Long cartId;
+    private Long orderId;
     private LocalDateTime createdAt;
-    private List<CartItemResponse> items;
+    private List<OrderHistoryItemResponse> items;
     private double totalAmount;
     private String status;
 }

@@ -1,53 +1,77 @@
 package com.sourabh.selfcheckout.Service;
 
-import com.sourabh.selfcheckout.Dto.CartItemResponse;
+import com.sourabh.selfcheckout.Dto.OrderHistoryItemResponse;
 import com.sourabh.selfcheckout.Dto.OrderHistoryResponse;
-import com.sourabh.selfcheckout.Entity.Cart;
-import com.sourabh.selfcheckout.Enum.CartStatus;
-import com.sourabh.selfcheckout.Repo.CartRepository;
+import com.sourabh.selfcheckout.Entity.Order;
+import com.sourabh.selfcheckout.Entity.OrderItem;
+import com.sourabh.selfcheckout.Repo.CustomerRepository;
+import com.sourabh.selfcheckout.Repo.OrderItemRepository;
+import com.sourabh.selfcheckout.Repo.OrderRepository;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
-    private final CartRepository cartRepo;
+    private final OrderRepository orderRepo;
+    private final OrderItemRepository orderItemRepo;
+    private final CustomerRepository customerRepo;
 
-    public OrderService(CartRepository cartRepo) {
-        this.cartRepo = cartRepo;
+    public OrderService(OrderRepository orderRepo,
+                        OrderItemRepository orderItemRepo,
+                        CustomerRepository customerRepo) {
+        this.orderRepo = orderRepo;
+        this.orderItemRepo = orderItemRepo;
+        this.customerRepo = customerRepo;
     }
 
-    public List<OrderHistoryResponse> getOrderHistory(String userId) {
-        // ✅ Get all CHECKED_OUT carts for this user, newest first
-        return cartRepo
-                .findByUserIdAndStatusOrderByCreatedAtDesc(
-                        userId, CartStatus.CHECKED_OUT)
+    @Transactional(readOnly = true)
+    public List<OrderHistoryResponse> getOrderHistory(String email) {
+        var customer = customerRepo.findByEmail(email)
+                .orElseThrow(() -> new UsernameNotFoundException(
+                        "Customer not found for email: " + email));
+
+        List<Order> orders = orderRepo.findByCustomer_CustomerIdOrderByCreatedAtDescOrderIdDesc(
+                customer.getCustomerId());
+        if (orders.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> orderIds = orders.stream().map(Order::getOrderId).toList();
+        Map<Long, List<OrderItem>> itemsByOrderId = orderItemRepo
+                .findWithProductsByOrderIds(orderIds)
                 .stream()
-                .map(this::toOrderHistoryResponse)
+                .collect(Collectors.groupingBy(item -> item.getOrder().getOrderId()));
+
+        return orders.stream()
+                .map(order -> toOrderHistoryResponse(
+                        order,
+                        itemsByOrderId.getOrDefault(order.getOrderId(), List.of())))
                 .toList();
     }
 
-    private OrderHistoryResponse toOrderHistoryResponse(Cart cart) {
-        List<CartItemResponse> items = cart.getItems().stream()
-                .map(item -> new CartItemResponse(
-                        item.getProduct().getBarcode(),
-                        item.getProduct().getName(),
-                        item.getProduct().getPrice(),
-                        item.getQuantity()
+    private OrderHistoryResponse toOrderHistoryResponse(Order order, List<OrderItem> orderItems) {
+        List<OrderHistoryItemResponse> items = orderItems.stream()
+                .map(orderItem -> new OrderHistoryItemResponse(
+                        orderItem.getProduct().getBarcode(),
+                        orderItem.getProduct().getName(),
+                        orderItem.getUnitPrice().doubleValue(),
+                        orderItem.getQuantity(),
+                        orderItem.getSubtotal()
                 ))
                 .toList();
 
-        double total = cart.getItems().stream()
-                .mapToDouble(i -> i.getProduct().getPrice() * i.getQuantity())
-                .sum();
-
         return new OrderHistoryResponse(
-                cart.getId(),
-                cart.getCreatedAt(),
+                order.getOrderId(),
+                order.getCreatedAt(),
                 items,
-                total,
-                cart.getStatus().name()
+                order.getTotalAmount().doubleValue(),
+                order.getStatus()
         );
     }
 }
